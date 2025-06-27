@@ -95,11 +95,12 @@ SetCursorPosInEdit(ctrl, pos) {
     SendMessage(0x00B7, 0, 0, ctrl.Hwnd)
 }
 
-; 🔹 Alt+C — копировать весь текст
+; 🔹 Alt+C — копировать весь текст и закрыть
 CopyAll(*) {
     global myGui
     text := myGui["NoteEdit"].Value
     A_Clipboard := text
+    HideGui()  ; Свернуть окно
 }
 
 ; 🔹 Alt+V — вставить текст из буфера
