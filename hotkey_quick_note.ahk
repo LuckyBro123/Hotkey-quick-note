@@ -1,10 +1,10 @@
 ﻿#Requires AutoHotkey v2.0
 
-persistentText := ""          ; сохраняемый текст
-cursorPosition := 0           ; сохранённая позиция курсора
-scrollLine := 0               ; сохранённая вертикальная прокрутка
+persistentText := ""
+cursorPosition := 0
+scrollLine := 0
 global myGui := ""
-global isVisible := false     ; флаг отображения окна
+global isVisible := false
 global guiExists := false
 
 #n::ToggleGui()
@@ -24,10 +24,17 @@ ToggleGui() {
         winY := (screenHeight - winHeight) // 2
 
         myGui := Gui("+Resize", "Быстрая заметка")
-        myGui.SetFont("s12", "Segoe UI")
+        myGui.SetFont("s12", "Segoe UI")  ; <-- Можешь заменить здесь
         myGui.AddEdit("vNoteEdit w" winWidth " h" winHeight " Multi WantTab")
         myGui.OnEvent("Close", HideGui)
         myGui.OnEvent("Escape", HideGui)
+
+        ; Глобальные горячие клавиши внутри окна
+        HotIfWinActive("ahk_id " myGui.Hwnd)
+        Hotkey("!c", CopyAll, "On")  ; Alt+C
+        Hotkey("!v", PasteFromClipboard, "On") ; Alt+V
+        Hotkey("!d", DeleteAll, "On") ; Alt+D
+        HotIfWinActive() ; сброс
 
         guiExists := true
     }
@@ -40,13 +47,13 @@ ToggleGui() {
         ctrl.Focus()
 
         ; Восстановить прокрутку
-        SendMessage(0x00B1, 0, 0, ctrl.Hwnd) ; временно убираем выделение
-        SendMessage(0x00B6, 0, scrollLine, ctrl.Hwnd) ; EM_LINESCROLL — прокрутка на scrollLine строк
+        SendMessage(0x00B1, 0, 0, ctrl.Hwnd)
+        SendMessage(0x00B6, 0, scrollLine, ctrl.Hwnd)
 
         ; Восстановить курсор
         if (cursorPosition >= 0 && cursorPosition <= StrLen(ctrl.Value)) {
             SendMessage(0x00B1, cursorPosition, cursorPosition, ctrl.Hwnd)
-            SendMessage(0x00B7, 0, 0, ctrl.Hwnd) ; EM_SCROLLCARET — показать курсор
+            SendMessage(0x00B7, 0, 0, ctrl.Hwnd)
         }
 
         isVisible := true
@@ -64,7 +71,7 @@ HideGui(*) {
     ctrl := myGui["NoteEdit"]
     persistentText := ctrl.Value
     cursorPosition := GetCursorPosInEdit(ctrl)
-    scrollLine := SendMessage(0x00CE, 0, 0, ctrl.Hwnd) ; EM_GETFIRSTVISIBLELINE
+    scrollLine := SendMessage(0x00CE, 0, 0, ctrl.Hwnd)
     myGui.Hide()
     isVisible := false
     SetTimer(WatchFocus, 0)
@@ -78,12 +85,32 @@ WatchFocus() {
 }
 
 GetCursorPosInEdit(ctrl) {
-    result := SendMessage(0x00B0, 0, 0, ctrl.Hwnd)  ; EM_GETSEL
+    result := SendMessage(0x00B0, 0, 0, ctrl.Hwnd)
     start := result & 0xFFFF
     return start
 }
 
 SetCursorPosInEdit(ctrl, pos) {
-    SendMessage(0x00B1, pos, pos, ctrl.Hwnd)  ; EM_SETSEL
-    SendMessage(0x00B7, 0, 0, ctrl.Hwnd)      ; EM_SCROLLCARET
+    SendMessage(0x00B1, pos, pos, ctrl.Hwnd)
+    SendMessage(0x00B7, 0, 0, ctrl.Hwnd)
+}
+
+; 🔹 Alt+C — копировать весь текст
+CopyAll(*) {
+    global myGui
+    text := myGui["NoteEdit"].Value
+    A_Clipboard := text
+}
+
+; 🔹 Alt+V — вставить текст из буфера
+PasteFromClipboard(*) {
+    global myGui
+    clip := A_Clipboard
+    myGui["NoteEdit"].Value := clip
+}
+
+; 🔹 Alt+D — удалить весь текст
+DeleteAll(*) {
+    global myGui
+    myGui["NoteEdit"].Value := ""
 }
