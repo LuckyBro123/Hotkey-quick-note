@@ -125,3 +125,21 @@ DeleteAll(*) {
     global myGui
     myGui["NoteEdit"].Value := ""
 }
+
+; === Ctrl+Enter: Home → Enter → Up ===
+^Enter::
+{
+    Send("{Home}")
+    Sleep(30)
+    Send("{Enter}")
+    Sleep(30)
+    Send("{Up}")
+}
+
+; === Shift+Enter: Down → Home → Enter ===
++Enter::
+{
+    Send("{End}")
+    Sleep(30)
+    Send("{Enter}")
+}
