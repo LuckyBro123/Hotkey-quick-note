@@ -1,6 +1,5 @@
 ﻿#Requires AutoHotkey v2.0
 
-saveFile := A_ScriptDir "\hotkey_quick_note__saved_text.dat"
 persistentText := ""
 cursorPosition := 0
 scrollLine := 0
@@ -9,15 +8,6 @@ global isVisible := false
 global guiExists := false
 
 #n::ToggleGui()
-OnExit(SaveNoteToFile)
-
-if FileExist(saveFile) {
-    fh := FileOpen(saveFile, "r", "UTF-8")
-    if fh {
-        persistentText := fh.Read()
-        fh.Close()
-    }
-}
 
 ToggleGui() {
     global persistentText, cursorPosition, scrollLine, myGui, isVisible, guiExists
@@ -35,7 +25,7 @@ ToggleGui() {
         Hotkey("!d", DeleteText, "On")
         Hotkey("^Enter", DoCtrlEnter, "On")
         Hotkey("+Enter", DoShiftEnter, "On")
-        Hotkey("^y", DeleteCurrentLineSmart, "On") ; ← Ctrl+Y: удаление строки
+        Hotkey("^y", DeleteCurrentLineSmart, "On") ; ← Ctrl+Y: удалить текущую строку
         HotIfWinActive()
 
         guiExists := true
@@ -61,17 +51,19 @@ ToggleGui() {
         editH := winHeight - padTop - padBottom
         ctrl.Move(padLeft, padTop, editW, editH)
 
-        ; Увеличение межстрочного интервала
+        ; Увеличение межстрочного интервала  НЕ РАБОТАЕТ ПОЧЕМУТО
         SendMessage(0x00C3, 0, 24, ctrl.Hwnd)
 
         ctrl.Focus()
         SendMessage(0x00B1, 0, 0, ctrl.Hwnd)
         SendMessage(0x00B6, 0, scrollLine, ctrl.Hwnd)
 
-        if (cursorPosition >= 0 && cursorPosition <= StrLen(ctrl.Value)) {
-            SendMessage(0x00B1, cursorPosition, cursorPosition, ctrl.Hwnd)
-            SendMessage(0x00B7, 0, 0, ctrl.Hwnd)
-        }
+        ; Получаем длину текста, как её видит Edit control
+        realLength := SendMessage(0x000E, 0, 0, ctrl.Hwnd)
+        if (cursorPosition < 0 || cursorPosition > realLength)
+            cursorPosition := realLength
+
+        SetCursorPosInEdit(ctrl, cursorPosition)
 
         isVisible := true
         SetTimer(WatchFocus, 200)
@@ -87,26 +79,11 @@ HideGui(*) {
 
     ctrl := myGui["NoteEdit"]
     persistentText := ctrl.Value ; обновляем текст в памяти без записи в файл
-    cursorPosition := StrLen(ctrl.Value)
-
-    result := SendMessage(0x00B0, 0, 0, ctrl.Hwnd)
-    start := result & 0xFFFF
-    if (start < cursorPosition)
-        cursorPosition := start
-
+    cursorPosition := GetCursorPosInEdit(ctrl) ; точное сохранение позиции
     scrollLine := SendMessage(0x00CE, 0, 0, ctrl.Hwnd)
     myGui.Hide()
     isVisible := false
     SetTimer(WatchFocus, 0)
-}
-
-SaveNoteToFile(*) {
-    global persistentText, saveFile
-    file := FileOpen(saveFile, "w", "UTF-8")
-    if file {
-        file.Write(persistentText)
-        file.Close()
-    }
 }
 
 WatchFocus(*) {
@@ -159,59 +136,52 @@ DoShiftEnter(*) {
     Send("{Enter}")
 }
 
-; --- удаление строки по Ctrl+Y ---
+; === Функция удаления строки через эмуляцию Home + Shift+End + Del ===
 DeleteCurrentLineSmart(*) {
     global myGui
     ctrl := myGui["NoteEdit"]
 
-    ; Получаем текущую позицию курсора
-    cursorPos := SendMessage(0x00B0, 0, 0, ctrl.Hwnd) & 0xFFFF
+    ; Сохраняем позицию курсора
+    cursorPos := GetCursorPosInEdit(ctrl)
 
-    ; Сохраняем позицию относительно начала строки
+    ; Выделяем всю строку под курсором
     Send("{Home}")
     Sleep(20)
-    startPos := GetCursorPosInEdit(ctrl)
-
-    ; Зажимаем Shift и нажимаем End → выделяем всю строку
     Send("+{End}")
     Sleep(20)
 
-    ; Удаляем выделенный текст
+    ; Удаляем выделение
     Send("{Del}")
 
-    ; Восстанавливаем позицию курсора внутри строки
+    ; Восстанавливаем курсор
     Send("{Home}")
     Sleep(20)
 
-    charsToRight := cursorPos - startPos
+    charsToRight := cursorPos
     Loop charsToRight {
         Send("{Right}")
     }
 
-    ; --- Проверка: пустая ли строка? ---
+    ; Проверяем, не является ли строка пустой
     text := ctrl.Value
     newCursorPos := GetCursorPosInEdit(ctrl)
 
-    ; Найдём начало строки (вручную без InStrRev)
     lineStart := 0
     Loop newCursorPos {
         pos := newCursorPos - A_Index + 1
         if (SubStr(text, pos, 1) = "`n") {
-            lineStart := pos + 1 ; после символа перевода строки
+            lineStart := pos + 1
             break
         }
     }
 
-    ; Найдём конец строки
     lineEnd := InStr(text, "`n", false, newCursorPos)
     if !lineEnd
         lineEnd := StrLen(text) + 1
 
-    ; Извлекаем содержимое строки
-    lineContent := SubStr(text, lineStart, newCursorPos - lineStart + 1)
+    lineContent := SubStr(text, lineStart, newCursorPos - lineStart)
     lineContent .= SubStr(text, newCursorPos + 1, lineEnd - newCursorPos - 1)
 
-    ; Если строка пустая (только пробелы или вообще ничего), то удаляем символ справа
     if (StrReplace(lineContent, " ", "") = "")
         Send("{Del}")
 }
