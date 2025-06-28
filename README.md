@@ -20,6 +20,8 @@ The app is convenient and written in AutoHotkey v2. It can be run as a script if
 
 Download AutoHotkey: https://github.com/AutoHotkey/AutoHotkey
 
+If you want to replace the font or hotkeys, you can easily do it directly in the program code.
+
 Guys, this program was written for personal use. The code isn't perfect and there are some small bugs, but it works well enough for me. I currently launch it manually because when starting from a shortcut, the window size displays incorrectly and I haven’t been able to fix it. If you can, please do so and send me the fix.
 
 **RUSSIAN**
@@ -43,5 +45,7 @@ Guys, this program was written for personal use. The code isn't perfect and ther
 Прога удобная. Написана на AutoHotkey v2. Можно запускать в виде скрипта, если у вас установлен сам AutoHotkey. Я так и делаю. Можно сгенерить exe-файл и запускать его. Работать будет точно так же.
 
 Скачать AutoHotkey   https://github.com/AutoHotkey/AutoHotkey
+
+Если у вас есть желание заменить шрифт или хоткеи, то можете легко это сделать прямо в коде программы.
 
 Ребята, программа написана для себя. Код не идеальный, есть мелкие глюки, но меня устраивает. Я пока запускаю вручную, потому что при запуске с иконки некорректно отображается размер окна. Я не смог это исправить. Если можете - исправьте и присылайте.
